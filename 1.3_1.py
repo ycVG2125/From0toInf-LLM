@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import match
+import math
 
 
 class MultiHeadAttention(nn.Module):
@@ -12,10 +12,10 @@ class MultiHeadAttention(nn.Module):
         self.head_dim = embed_size // heads
         assert self.head_dim * self.heads == self.embed_size, "embed_dim need to be diveded by heads"
 
-        self.k = nn.Liner(self.embed_size, self.embed_size, bias=False)
-        self.q = nn.Liner(self.embed_size, self.embed_size, bias=False)
-        self.v = nn.Liner(self.embed_size, self.embed_size, bias=False)
-        self.fc_out = nn.Liner(self.heads * self.head_dim, self.embed_size)
+        self.k = nn.Linear(self.embed_size, self.embed_size, bias=False)
+        self.q = nn.Linear(self.embed_size, self.embed_size, bias=False)
+        self.v = nn.Linear(self.embed_size, self.embed_size, bias=False)
+        self.fc_out = nn.Linear(self.heads * self.head_dim, self.embed_size)
 
     def forward(self, value, key, query, mask):
         b = query.shape[0]
@@ -25,7 +25,7 @@ class MultiHeadAttention(nn.Module):
 
         # Split the embedding into self.heads different pieces
         q = q.reshape(b, query_len, self.heads, self.head_dim)
-        k = k.reshape(b, key, self.heads, self.head_dim)
+        k = k.reshape(b, key_len, self.heads, self.head_dim)
         v = v.reshape(b, value_len, self.heads, self.head_dim)
 
         # Einsum does matrix multiplication for query*keys for each training example
@@ -33,7 +33,7 @@ class MultiHeadAttention(nn.Module):
         attention = torch.einsum("bqhd,bkhd->bhqk", [q, k])
         if mask is not None:
             attention = attention.masked_fill(mask == 0, float("-1e20"))
-        attention = F.softmax(attention / mathsqrt(self.head_dim), dim=3)
+        attention = F.softmax(attention / math.sqrt(self.head_dim), dim=3)
         out = torch.einsum("bhqk,bkhd->bqhd", [attention, v]).reshape(b, query_len, self.heads * self.head_dim)
         out = self.fc_out(out)
         return out
